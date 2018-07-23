@@ -1,0 +1,3 @@
+guard :nginx do
+  watch(%r{^config/nginx/.*})
+end

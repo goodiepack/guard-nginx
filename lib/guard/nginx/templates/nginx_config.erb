@@ -1,0 +1,79 @@
+
+pid <%= pid_path %>;
+worker_rlimit_nofile 8192;
+worker_processes  3;
+events {
+  worker_connections  1042;
+}
+
+http {
+  upstream puma_guard_nginx {
+    <%= "server unix:#{tmp_path}/sockets/puma.sock;" %>
+  }
+
+  <% if config_fetch(:use_ssl) -%>
+  server {
+    listen <%= config_fetch(:http_port) %>;
+    server_name _;
+    rewrite ^(.*) https://$host:3001$1 permanent;
+  }
+  <% else -%>
+  server {
+    listen <%= config_fetch(:http_port) %>;
+    server_name _;
+  }
+  <% end -%>
+
+  server {
+  <% if config_fetch(:use_ssl) -%>
+    listen <%= config_fetch(:https_port) %> ssl;
+    ssl_certificate <%= config_path %>/certificates/server.crt;
+    ssl_certificate_key <%= config_path %>/certificates/server.key;
+
+    ssl_session_timeout 5m;
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';
+
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_dhparam <%= config_path %>/certificates/dhparam.pem;
+  <% else -%>
+    listen <%= config_fetch(:http_port) %>;
+  <% end -%>
+    server_name _;
+    root <%= root_path %>/public;
+    try_files $uri/index.html $uri @puma_guard_nginx;
+
+    client_max_body_size 4G;
+    keepalive_timeout 10;
+
+    error_page 500 502 504 /500.html;
+    error_page 503 @503;
+
+    location @puma_guard_nginx {
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+      proxy_set_header Host $http_host;
+      proxy_redirect off;
+  <% if config_fetch(:use_ssl) -%>
+      proxy_set_header X-Forwarded-Proto https;
+  <% end -%>
+      proxy_pass http://puma_guard_nginx;
+      # limit_req zone=one;
+      access_log <%= root_path %>/log/nginx.access.log;
+      error_log <%= root_path %>/log/nginx.error.log;
+    }
+
+    location = /50x.html {
+      root html;
+    }
+
+    location = /404.html {
+      root html;
+    }
+
+    if ($request_method !~ ^(GET|HEAD|PUT|PATCH|POST|DELETE|OPTIONS)$ ){
+      return 405;
+    }
+  }
+}
