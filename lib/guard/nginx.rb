@@ -5,7 +5,6 @@ require 'guard/nginx/config_processor'
 module ::Guard
   class Nginx < Plugin
     def initialize(options)
-      @value = "Test"
       UI.info "hello path: #{Dir.pwd}"
       Dir.mkdir("#{tmp_path}/config") unless Dir.exist?("#{tmp_path}/config")
       super
