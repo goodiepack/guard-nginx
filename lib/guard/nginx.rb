@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'guard/compat/plugin'
 require 'guard/nginx/version'
 require 'guard/nginx/config_processor'
@@ -16,7 +18,7 @@ module ::Guard
       generate_config
 
       IO.popen("#{executable} -c #{tmp_path}/config/nginx.conf", 'w+')
-      UI.info "Nginx started" if $?.success?
+      UI.info 'Nginx started' if $CHILD_STATUS.success?
     end
 
     def stop
@@ -24,7 +26,7 @@ module ::Guard
       if pid
         UI.info "Sending TERM signal to Nginx (#{pid})"
         FileUtils.rm "#{tmp_path}/config/nginx.conf"
-        Process.kill("TERM", pid)
+        ::Process.kill('TERM', pid)
         true
       end
     end
@@ -35,7 +37,7 @@ module ::Guard
         generate_config
 
         UI.info "Sending HUP signal to Nginx (reloading #{pid})"
-        Process.kill("HUP", pid)
+        ::Process.kill('HUP', pid)
         true
       end
     end
@@ -44,16 +46,16 @@ module ::Guard
       reload
     end
 
-    def run_on_change(paths)
+    def run_on_change(_paths)
       true
     end
 
     private
 
     def pidfile_path
-      options.fetch(:pidfile) {
+      options.fetch(:pidfile) do
         File.expand_path('tmp/pids/nginx.pid', Dir.pwd)
-      }
+      end
     end
 
     def tmp_path
@@ -70,15 +72,15 @@ module ::Guard
         '-'
       ).result(
         ConfigProcessor.new({
-          port: port,
-          use_ssl: true,
-          http_port: 3000,
-          https_port: 3001,
-          server_name: 'localhost'
-        }).get_binding
+                              port: port,
+                              use_ssl: true,
+                              http_port: 3000,
+                              https_port: 3001,
+                              server_name: 'localhost'
+                            }).get_binding
       )
 
-      File.open("#{tmp_path}/config/nginx.conf", "w") { |f| f.write(file) }
+      File.open("#{tmp_path}/config/nginx.conf", 'w') { |f| f.write(file) }
     end
 
     def pid
@@ -90,7 +92,7 @@ module ::Guard
     end
 
     def port
-      options.fetch(:port){ 3000 }
+      options.fetch(:port) { 3000 }
     end
   end
 end
