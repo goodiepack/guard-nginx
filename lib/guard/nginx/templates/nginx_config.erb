@@ -109,7 +109,7 @@ http {
 
 
   upstream puma_guard_nginx {
-    <%= "server unix:#{tmp_path}/sockets/puma.sock;" %>
+    <%= "server unix:#{ENV.fetch('HOME')}/.puma.sock;" %>
   }
 
   <% if config_fetch(:use_ssl) -%>
